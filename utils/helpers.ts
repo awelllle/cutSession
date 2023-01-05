@@ -41,8 +41,8 @@ const paginateData = async (Model: Model<any>, sortBy, sortOrder: string | numbe
     const url = process.env.APP_URL
 
     const result = {
-      ...(startIndex > 0 && { previous: `${url}/${page - 1}` }),
-      ...(endIndex < count && { next: `${url}/${page + 1}`  }),
+      ...(startIndex > 0 && { previous: `${url}?type=${req.query.type}&limit=${limit}&offset=${page - 1}` }),
+      ...(endIndex < count && { next: `${url}?type=${req.query.type}&limit=${limit}&offset=${page + 1}`  }),
       // total: count,
       //currentPage: page,
       count: totalPages ? totalPages : 1,

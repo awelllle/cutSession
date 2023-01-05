@@ -6,17 +6,16 @@ import { Merchant, MerchantInterface } from '../models/merchant';
 import { Booking, BookingInterface } from '../models/booking'
 import { Session, SessionInterface } from '../models/studioSession'
 import { isFuture } from 'date-fns'
+import { differenceInMinutes } from 'date-fns'
+import { getHours } from 'date-fns'
+import { getMinutes } from 'date-fns'
+
 
 export class AppController {
  
 public async clients(req: Request & {user: any}, res: Response) {
 
- 
-  
-    const type: string = req.query.type as string;
-   
-   
-
+   const type: string = req.query.type as string;
    const types = ['USER', 'MERCHANT'];
    if(!types.includes(type)){
      return utils.helpers.errorResponse(
@@ -27,59 +26,26 @@ public async clients(req: Request & {user: any}, res: Response) {
    
    }
 
-   var userType
-
    if(type === 'user'){
 
-     userType = User
+    const excludeFields = "-_id -__v";
+    const paginatedData = await utils.helpers.paginateData(User, 'createdAt', -1, req, {}, excludeFields)
+    
+    return res.status(200).json(
+        paginatedData
+        );
+
 
    }else{
 
-    const excludeFields = "-_id -__v";
-    const paginatedData = await utils.helpers.paginateData(Merchant, 'createdAt', -1, req, {}, excludeFields)
+         const excludeFields = "-_id -__v";
+         const paginatedData = await utils.helpers.paginateData(Merchant, 'createdAt', -1, req, {}, excludeFields)
     
-          return res.status(200).json(
-               paginatedData
-              );
-
-        // Merchant.find({}, async (err:Error, merchant: MerchantInterface) => {
-        //     if (err){
-                
-        //     return utils.helpers.errorResponse(
-        //         res,
-        //         [],
-        //         'Something went wrong, please try again',
-        //         )
-        
-        //     }
-
-        //     return res.status(200).json({
-        //         "count": 0,
-        //         "next": "http://example.com",
-        //         "previous": "http://example.com",
-        //         "data": [
-        //           {
-        //             "merchantId": "c3073b9d-edd0-49f2-a28d-b7ded8ff9a8b",
-        //             "name": "string",
-        //             "email": "user@example.com",
-        //             "cityOfOperation": "string",
-        //             "phoneNumber": "string"
-        //           }
-        //         ]
-        //       });
-
-
-
-        // });
+        return res.status(200).json(
+            paginatedData
+            );
 
    }
-
-
- 
-
-
-
-
 }
 
 
@@ -110,6 +76,88 @@ public async createSession(req: Request & {user: any}, res: Response) {
        )
    
    }
+
+   const minutes: number = differenceInMinutes(
+    new Date(`2014, 6, 2,${body.endsAt}`),
+    new Date(`2014, 6, 2,${body.startsAt}`)
+  )
+ 
+  const duration = [45, 60, 90];
+  if(!duration.includes(minutes)){
+    return utils.helpers.errorResponse(
+      res,
+      [],
+      'Time slots can only be 45, 60 or 90 minutes',
+      )
+  
+  }
+
+  if(body.type === 'WeekEnd'){
+    const startHour = getHours( new Date(`2014, 6, 2,${body.startsAt}`))
+    const closeHour = getHours( new Date(`2014, 6, 2,${body.endsAt}`))
+    const getMins =  getMinutes( new Date(`2014, 6, 2,${body.endsAt}`))
+
+    
+    if(startHour < 10){
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Weekend sessions start at 10am',
+        )
+    }
+   
+   
+    if(closeHour > 22){
+      
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Weekend sessions end at 10pm',
+        )
+    }
+
+    if(closeHour == 22 && getMins > 0){
+      
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Weekend sessions end at 10pm',
+        )
+    }
+
+  }
+
+  if(body.type === 'WeekDay'){
+    const startHour = getHours( new Date(`2014, 6, 2,${body.startsAt}`))
+    const closeHour = getHours( new Date(`2014, 6, 2,${body.endsAt}`))
+    const getMins =  getMinutes( new Date(`2014, 6, 2,${body.endsAt}`))
+    
+    if(startHour < 9){
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Week day sessions start at 9am',
+        )
+    }
+
+    if(closeHour > 20){
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Week day sessions end at 8pm',
+        )
+    }
+
+    if(closeHour == 20 && getMins > 0){
+      
+      return utils.helpers.errorResponse(
+        res,
+        [],
+        'Week day sessions end at 8pm',
+        )
+    }
+
+  }
 
 
    Merchant.findOne({merchantId}, async (err:Error, user: MerchantInterface) => {
@@ -273,10 +321,6 @@ public async bookSession(req: Request & {user: any}, res: Response) {
  if (hasRequired.success) {
   
   
-   
-
-
-
    Session.findOne({sessionId}, async (err:Error, session: SessionInterface) => {
      if (err){
          
@@ -300,8 +344,14 @@ public async bookSession(req: Request & {user: any}, res: Response) {
          )
      }
 
-     const id = randomBytes(80).toString('hex');
-     const ref = randomBytes(8).toString('hex');
+      const id = randomBytes(80).toString('hex');
+      const ref = randomBytes(8).toString('hex');
+
+      // const startsAt = addMinutes(new Date(`${body.date}`), 30)
+
+      // const endsAt = addMinutes(new Date(`${body.date}`), 30)
+
+
 
              const booking = new Booking({
        
@@ -310,6 +360,7 @@ public async bookSession(req: Request & {user: any}, res: Response) {
                userId: body.userId,
                sessionId: body.sessionId,
                date: body.date,
+
                startsAt : body.startsAt,
                endsAt: body.endsAt,
                notes:  body.notes || '',
@@ -351,14 +402,23 @@ public async bookSession(req: Request & {user: any}, res: Response) {
 public async getBookings(req: Request & {user: any}, res: Response) {
 
 
- const city: string = req.query.city as string;
- const limit: string = req.query.limit as string;
- const offset: string = req.query.offset as string;
+ 
+  const required = [
+    { name: 'city', type: 'string' },
+  ]
+  const { body } = req;
+  const hasRequired = utils.helpers.validParam(body, required)
+ 
+  if (hasRequired.success) {
+
+
+    const limit: string = req.query.limit as string;
+    const offset: string = req.query.offset as string;
    
 
 
 
-   Booking.find({city}, async (err:Error, session: SessionInterface) => {
+   Booking.find({}, async (err:Error, session: SessionInterface) => {
      if (err){
          
        return utils.helpers.errorResponse(
@@ -395,10 +455,20 @@ public async getBookings(req: Request & {user: any}, res: Response) {
    
 
      }
+
+
          
      
  })
 
+}else{
+  return utils.helpers.errorResponse(
+    res,
+    [],
+    'Missing required fields',
+    )
+ 
+  }
 
 
 }

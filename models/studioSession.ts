@@ -4,7 +4,7 @@ export interface SessionInterface extends Document {
   id: string;
   merchantId: string;
 
-  startsAt: Date,
+  startsAt: String,
   endsAt: string;
   type: string;
  

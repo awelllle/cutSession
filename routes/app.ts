@@ -10,11 +10,9 @@ export class AppRoutes {
 
     public routes(app): void {
         app.route('/register/users').post(this.authController.registerUser)
-
         app.route('/register/merchants').post(this.authController.registerMerchant)
 
         app.route('/sign-in').post(this.authController.signIn)
-
         app.route('/clients').get(this.appController.clients)
 
         app.route('/studios/:merchantId').post(this.appController.createSession)
