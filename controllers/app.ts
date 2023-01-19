@@ -49,7 +49,7 @@ public async clients(req: Request & {user: any}, res: Response) {
 }
 
 
-public async createSession(req: Request & {user: any}, res: Response) {
+public async createSession(req: Request & {user: any}, res: Response) { 
 
 
  
@@ -312,6 +312,7 @@ public async bookSession(req: Request & {user: any}, res: Response) {
    { name: 'sessionId', type: 'string' },
    { name: 'date', type: 'string' },
    { name: 'userId', type: 'string' },
+   { name: 'merchantId', type: 'string' },
   
  ]
  const { body } = req;
@@ -352,14 +353,15 @@ public async bookSession(req: Request & {user: any}, res: Response) {
       // const endsAt = addMinutes(new Date(`${body.date}`), 30)
 
 
-
+            const datee = new Date(body.date)
              const booking = new Booking({
        
                bookingId: id,
                bookingRef: ref,
                userId: body.userId,
+               merchantId: body.merchantId,
                sessionId: body.sessionId,
-               date: body.date,
+               date:datee,
 
                startsAt : body.startsAt,
                endsAt: body.endsAt,
@@ -401,75 +403,98 @@ public async bookSession(req: Request & {user: any}, res: Response) {
 
 public async getBookings(req: Request & {user: any}, res: Response) {
 
-
- 
-  const required = [
-    { name: 'city', type: 'string' },
-  ]
-  const { body } = req;
-  const hasRequired = utils.helpers.validParam(body, required)
- 
-  if (hasRequired.success) {
-
-
     const limit: string = req.query.limit as string;
     const offset: string = req.query.offset as string;
+
+    const city: string = req.query.city as string;
+    const merchant: string = req.query.merchant as string || '';
+
+    const startDate: Date = new Date(`${req.query.startDate}`) as any || ''
+    const endDate: Date = new Date(`${req.query.endDate}` ) as any || ''
    
 
+   const agg = [
+    ...(startDate
+      ? [
+
+        { $match: { 
+          "date": {$gte: startDate}
+        }},
+
+        ]
+      : []),
+
+      ...(endDate
+        ? [
+  
+          { $match: { 
+            "date": {$lt: endDate}
+          }},
+  
+          ]
+        : []),
+
+        ...(merchant
+          ? [
+    
+            {
+              $lookup: {
+                from: "merchants",
+                localField: "merchantId",
+                foreignField: "merchantId",
+                as: "merchant",
+              },
+            },
+            {
+              $unwind: {
+                path: "$merchant",
+              },
+            },
+
+            { $match: { 
+              $or: [ { "merchant.merchantId" : merchant }, { "merchant.name" : merchant } ] 
+            }},
+
+            ]
+          : []),
+
+          ...(city
+            ? [
+      
+              {
+                $lookup: {
+                  from: "merchants",
+                  localField: "merchantId",
+                  foreignField: "merchantId",
+                  as: "merchant",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$merchant",
+                },
+              },
+  
+              { $match: { 
+                "cityOfOperation": city
+              }},
+  
+              ]
+            : []),
+   ]
+  // const excludeFields = "-_id -__v";
+   const paginatedData = await utils.helpers.paginateAggregateData(Booking, agg, req)
 
 
-   Booking.find({}, async (err:Error, session: SessionInterface) => {
-     if (err){
-         
-       return utils.helpers.errorResponse(
-         res,
-         [],
-         'Something went wrong, please try again',
-         )
- 
-     }
-
-    if(session != null){ 
-
-
-     const id = randomBytes(80).toString('hex');
-     const ref = randomBytes(8).toString('hex');
-
-             const booking = new Booking({
-       
-               
-             })
-
-             await booking.save();
-           return  res.status(200).json({bookingId: id, bookingRef: ref});
-
-            
-
+    if(paginatedData != null){ 
+      return res.status(200).json(paginatedData);
      }else{
-
          return utils.helpers.errorResponse(
            res,
            [],
-           'Session does not exist',
+           'No bookings',
            )
-   
-
      }
-
-
-         
-     
- })
-
-}else{
-  return utils.helpers.errorResponse(
-    res,
-    [],
-    'Missing required fields',
-    )
- 
-  }
-
 
 }
 

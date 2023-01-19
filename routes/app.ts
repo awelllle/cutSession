@@ -15,6 +15,7 @@ export class AppRoutes {
         app.route('/sign-in').post(this.authController.signIn)
         app.route('/clients').get(this.appController.clients)
 
+        
         app.route('/studios/:merchantId').post(this.appController.createSession)
         app.route('/studios/:merchantId').get(this.appController.getSessions)
 

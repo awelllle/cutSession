@@ -58,6 +58,48 @@ const paginateData = async (Model: Model<any>, sortBy, sortOrder: string | numbe
 
 };
 
+const paginateAggregateData = async (Model: Model<any>, aggregate: any[], req: Request) => {
+  const page = +req.query.offset || 1;
+  const limit = +req.query.limit || 20;
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  try {
+
+    const paginatedAggregate = [
+      ...aggregate,
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: startIndex }, { $limit: endIndex }],
+        },
+      },
+    ];
+    const aggregateDated = await Model.aggregate(paginatedAggregate);
+
+    const count = aggregateDated[0].metadata[0]?.total || 0;
+    const totalPages = Math.ceil(count / limit);
+
+
+    const url = process.env.APP_URL
+    const result = {
+      ...(startIndex > 0 && { previous: `${url}/bookings?limit=${limit}&offset=${page - 1}` }),
+      ...(endIndex < count && { next: `${url}/bookings?limit=${limit}&offset=${page + 1}`  }),
+      // total: count,
+      //currentPage: page,
+      count: totalPages ? totalPages : 1,
+      data: aggregateDated[0].data as any[],
+    };
+
+    return result;
+  } catch (error) {
+    console.log(error);
+    throw error
+  }
+
+
+};
+
+
 const sendErrorResponse = function (
   res: Response,
   content: DynamicContent,
@@ -155,6 +197,7 @@ export default {
   
   sendSuccessResponse,
   paginateData,
+  paginateAggregateData,
   sendErrorResponse,
   errorResponse,
   trimCollection,

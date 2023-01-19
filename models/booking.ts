@@ -5,6 +5,7 @@ export interface BookingInterface extends Document {
   bookingRef: string;
 
   userId: String,
+  merchantId: String,
   sessionId: string;
   date: Date;
   startsAt:string;
@@ -22,6 +23,7 @@ export const BookingSchema = new Schema<BookingInterface>(
     bookingRef: String,
   
     userId: String,
+    merchantId: String,
     sessionId: String,
     date: Date,
     startsAt:String,
